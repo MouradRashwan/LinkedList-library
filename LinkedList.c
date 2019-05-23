@@ -388,7 +388,10 @@ bool LinkedList_insertAfter(LinkedList_t *ptLinkedList, void *pvElement, void *p
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].bValid = true;
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32PreviousIndex = i32AfterThisElemIndex;
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32NextIndex = ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex;
-        ptLinkedList->ptElemHeaderArray[ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex].i32PreviousIndex = i32ElementIndex;
+        if(ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex != -1)
+        {
+            ptLinkedList->ptElemHeaderArray[ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex].i32PreviousIndex = i32ElementIndex;  
+        }
         ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex = i32ElementIndex;
         {
             pvLinkedListElement = ((uint8_t *)ptLinkedList->pvArray) + (i32ElementIndex * ptLinkedList->i32ElementSize);
@@ -422,7 +425,10 @@ bool LinkedList_insertBefore(LinkedList_t *ptLinkedList, void *pvElement, void *
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].bValid = true;
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32NextIndex = i32BeforeThisElemIndex;
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32PreviousIndex =  ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex;
-        ptLinkedList->ptElemHeaderArray[ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex].i32NextIndex = i32ElementIndex;
+        if(ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex != -1)
+        {
+            ptLinkedList->ptElemHeaderArray[ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex].i32NextIndex = i32ElementIndex;
+        }
         ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex = i32ElementIndex;
 
         if(ptLinkedList->i32Head == i32BeforeThisElemIndex)
