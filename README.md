@@ -1,1 +1,1 @@
-# LinkedList generic data structure library written in C.
+# LinkedList is a generic data structure library written in C.
