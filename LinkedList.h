@@ -24,6 +24,8 @@ void LinkedList_allocateStatic(LinkedList_t *ptLinkedList, ElementHeader_t *ptEl
 
 bool LinkedList_allocateDynamic(LinkedList_t *ptLinkedList, int32_t i32LinkedListLen, int32_t i32ElementSize);
 
+bool LinkedList_reallocateDynamic(LinkedList_t *ptLinkedList, int32_t i32NewLinkedListLen);
+
 void LinkedList_deallocateDynamic(LinkedList_t *ptLinkedList);
 
 bool LinkedList_isEmpty(LinkedList_t *ptLinkedList);

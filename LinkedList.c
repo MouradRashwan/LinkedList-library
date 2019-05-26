@@ -87,6 +87,34 @@ bool LinkedList_allocateDynamic(LinkedList_t *ptLinkedList, int32_t i32LinkedLis
     return true;
 }
 
+bool LinkedList_reallocateDynamic(LinkedList_t *ptLinkedList, int32_t i32NewLinkedListLen)
+{
+    void *pvData;
+    ElementHeader_t *ptHeader;
+
+    pvData = (void *)realloc(ptLinkedList->pvArray, i32NewLinkedListLen * ptLinkedList->i32ElementSize);
+    ptHeader = (ElementHeader_t *)realloc(ptLinkedList->ptElemHeaderArray, i32NewLinkedListLen * sizeof(ElementHeader_t));
+
+    if(pvData != NULL)
+    {
+        ptLinkedList->pvArray = pvData;
+    }
+    if(ptHeader != NULL)
+    {
+        ptLinkedList->ptElemHeaderArray = ptHeader;
+    }
+
+    if((pvData != NULL) && (ptHeader != NULL))
+    {
+        ptLinkedList->i32LinkedListLen = i32NewLinkedListLen;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 void LinkedList_deallocateDynamic(LinkedList_t *ptLinkedList)
 {
     free(ptLinkedList->pvArray);
