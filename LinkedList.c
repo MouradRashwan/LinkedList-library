@@ -25,27 +25,13 @@ static int32_t _getValidIndex(LinkedList_t *ptLinkedList)
     return ii;
 }
 
-static int32_t _getEndIndex(LinkedList_t *ptLinkedList)
-{
-    int32_t i32CurrElemIndex, i32LastElemIndex;
-
-    i32LastElemIndex = -1;
-    i32CurrElemIndex = ptLinkedList->i32Head;
-    while(i32CurrElemIndex != -1)
-    {
-        i32LastElemIndex = i32CurrElemIndex;
-        i32CurrElemIndex = ptLinkedList->ptElemHeaderArray[i32CurrElemIndex].i32NextIndex;
-    }
-
-    return i32LastElemIndex;
-}
-
 void LinkedList_allocateStatic(LinkedList_t *ptLinkedList, ElementHeader_t *ptElemHeaderArray, void *pvLinkedListArray, int32_t i32LinkedListLen, int32_t i32ElementSize)
 {
     int32_t ii;
 
     ptLinkedList->i32ElementSize = i32ElementSize;
     ptLinkedList->i32Head = -1;
+    ptLinkedList->i32End = -1;
     ptLinkedList->i32ActualLen = 0;
     ptLinkedList->i32LinkedListLen = i32LinkedListLen;
     ptLinkedList->pvArray = pvLinkedListArray;
@@ -65,6 +51,7 @@ bool LinkedList_allocateDynamic(LinkedList_t *ptLinkedList, int32_t i32LinkedLis
 
     ptLinkedList->i32ElementSize = i32ElementSize;
     ptLinkedList->i32Head = -1;
+    ptLinkedList->i32End = -1;
     ptLinkedList->i32ActualLen = 0;
     ptLinkedList->i32LinkedListLen = i32LinkedListLen;
     ptLinkedList->pvArray = (void *)calloc(ptLinkedList->i32LinkedListLen, ptLinkedList->i32ElementSize);
@@ -180,17 +167,15 @@ bool LinkedList_getHead(LinkedList_t *ptLinkedList, void *pvElement)
 
 bool LinkedList_getEnd(LinkedList_t *ptLinkedList, void *pvElement)
 {
-    int32_t i32EndElemIndex;
     void *pvLinkedListElement;
 
     ptLinkedList->bHeadingToEnd = false;
 
     if(!LinkedList_isEmpty(ptLinkedList))
     {
-        i32EndElemIndex = _getEndIndex(ptLinkedList);
-        ptLinkedList->i32Next = ptLinkedList->ptElemHeaderArray[i32EndElemIndex].i32PreviousIndex;
+        ptLinkedList->i32Next = ptLinkedList->ptElemHeaderArray[ptLinkedList->i32End].i32PreviousIndex;
         {
-            pvLinkedListElement = ((uint8_t *)ptLinkedList->pvArray) + (i32EndElemIndex * ptLinkedList->i32ElementSize);
+            pvLinkedListElement = ((uint8_t *)ptLinkedList->pvArray) + (ptLinkedList->i32End * ptLinkedList->i32ElementSize);
             memcpy(pvElement, pvLinkedListElement, ptLinkedList->i32ElementSize);
         }
         return true;
@@ -211,6 +196,7 @@ bool LinkedList_getNext(LinkedList_t *ptLinkedList, void *pvElement)
             pvLinkedListElement = ((uint8_t *)ptLinkedList->pvArray) + (ptLinkedList->i32Next * ptLinkedList->i32ElementSize);
             memcpy(pvElement, pvLinkedListElement, ptLinkedList->i32ElementSize);
         }
+
         if(ptLinkedList->bHeadingToEnd == true)
         {
             ptLinkedList->i32Next = ptLinkedList->ptElemHeaderArray[ptLinkedList->i32Next].i32NextIndex;
@@ -250,7 +236,7 @@ int32_t LinkedList_find(LinkedList_t *ptLinkedList, void *pvElement)
 
 bool LinkedList_add(LinkedList_t *ptLinkedList, void *pvElement)
 {
-    int32_t i32ElementIndex1, i32ElementIndex2;
+    int32_t i32ElementIndex;
     void *pvLinkedListElement;
 
     if(!LinkedList_isFull(ptLinkedList))
@@ -258,6 +244,7 @@ bool LinkedList_add(LinkedList_t *ptLinkedList, void *pvElement)
         if(ptLinkedList->i32Head == -1)
         {
             ptLinkedList->i32Head = 0;
+            ptLinkedList->i32End = 0;
             ptLinkedList->ptElemHeaderArray[0].i32NextIndex = -1;
             ptLinkedList->ptElemHeaderArray[0].i32PreviousIndex = -1;
             ptLinkedList->ptElemHeaderArray[0].bValid = true;
@@ -268,14 +255,14 @@ bool LinkedList_add(LinkedList_t *ptLinkedList, void *pvElement)
         }
         else
         {
-            i32ElementIndex1 = _getEndIndex(ptLinkedList);
-            i32ElementIndex2 = _getValidIndex(ptLinkedList);
-            ptLinkedList->ptElemHeaderArray[i32ElementIndex1].i32NextIndex = i32ElementIndex2;
-            ptLinkedList->ptElemHeaderArray[i32ElementIndex2].i32NextIndex = -1;
-            ptLinkedList->ptElemHeaderArray[i32ElementIndex2].i32PreviousIndex = i32ElementIndex1;
-            ptLinkedList->ptElemHeaderArray[i32ElementIndex2].bValid = true;
+            i32ElementIndex = _getValidIndex(ptLinkedList);
+            ptLinkedList->ptElemHeaderArray[ptLinkedList->i32End].i32NextIndex = i32ElementIndex;
+            ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32NextIndex = -1;
+            ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32PreviousIndex = ptLinkedList->i32End;
+            ptLinkedList->ptElemHeaderArray[i32ElementIndex].bValid = true;
+            ptLinkedList->i32End = i32ElementIndex;
             {
-                pvLinkedListElement = ((uint8_t *)ptLinkedList->pvArray) + (i32ElementIndex2 * ptLinkedList->i32ElementSize);
+                pvLinkedListElement = ((uint8_t *)ptLinkedList->pvArray) + (i32ElementIndex * ptLinkedList->i32ElementSize);
                 memcpy(pvLinkedListElement, pvElement, ptLinkedList->i32ElementSize);
             }
         }
@@ -318,6 +305,10 @@ bool LinkedList_remove(LinkedList_t *ptLinkedList, void *pvElement)
         {
             ptLinkedList->ptElemHeaderArray[i32ElementIndex2].i32PreviousIndex = i32ElementIndex1;
         }
+        else
+        {
+            ptLinkedList->i32End = i32ElementIndex1;
+        }
 
         ptLinkedList->i32ActualLen -= 1;
         return true;
@@ -340,6 +331,7 @@ bool LinkedList_removeHead(LinkedList_t *ptLinkedList)
         if(i32NewHeadElemIndex == -1)
         {
             ptLinkedList->i32Head = -1;
+            ptLinkedList->i32End = -1;
         }
         else
         {
@@ -358,22 +350,22 @@ bool LinkedList_removeHead(LinkedList_t *ptLinkedList)
 
 bool LinkedList_removeEnd(LinkedList_t *ptLinkedList)
 {
-    int32_t i32EndElemIndex, i32NewEndElemIndex;
+    int32_t i32NewEndElemIndex;
 
     if(!LinkedList_isEmpty(ptLinkedList))
     {
-        i32EndElemIndex = _getEndIndex(ptLinkedList);
-
-        ptLinkedList->ptElemHeaderArray[i32EndElemIndex].bValid = false;
-        i32NewEndElemIndex = ptLinkedList->ptElemHeaderArray[i32EndElemIndex].i32PreviousIndex;
+        ptLinkedList->ptElemHeaderArray[ptLinkedList->i32End].bValid = false;
+        i32NewEndElemIndex = ptLinkedList->ptElemHeaderArray[ptLinkedList->i32End].i32PreviousIndex;
 
         if(i32NewEndElemIndex == -1)
         {
             ptLinkedList->i32Head = -1;
+            ptLinkedList->i32End = -1;
         }
         else
         {
             ptLinkedList->ptElemHeaderArray[i32NewEndElemIndex].i32NextIndex = -1;
+            ptLinkedList->i32End = i32NewEndElemIndex;
         }
 
         ptLinkedList->i32ActualLen -= 1;
@@ -401,6 +393,11 @@ bool LinkedList_insertAtHead(LinkedList_t *ptLinkedList, void *pvElement)
         {
             ptLinkedList->ptElemHeaderArray[ptLinkedList->i32Head].i32PreviousIndex = i32ElementIndex;
         }
+        else
+        {
+            ptLinkedList->i32End = i32ElementIndex;
+        }
+
         ptLinkedList->i32Head = i32ElementIndex;
 
         {
@@ -419,25 +416,26 @@ bool LinkedList_insertAtHead(LinkedList_t *ptLinkedList, void *pvElement)
 
 bool LinkedList_insertAtEnd(LinkedList_t *ptLinkedList, void *pvElement)
 {
-    int32_t i32ElementIndex, i32EndElemIndex;
+    int32_t i32ElementIndex;
     void *pvLinkedListElement;
 
     if(!LinkedList_isFull(ptLinkedList))
     {
-        i32EndElemIndex = _getEndIndex(ptLinkedList);
         i32ElementIndex = _getValidIndex(ptLinkedList);
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].bValid = true;
-        ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32PreviousIndex = i32EndElemIndex;
+        ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32PreviousIndex = ptLinkedList->i32End;
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32NextIndex = -1;
 
-        if(i32EndElemIndex != -1)
+        if(ptLinkedList->i32End != -1)
         {
-            ptLinkedList->ptElemHeaderArray[i32EndElemIndex].i32NextIndex = i32ElementIndex;
+            ptLinkedList->ptElemHeaderArray[ptLinkedList->i32End].i32NextIndex = i32ElementIndex;
         }
         else
         {
             ptLinkedList->i32Head = i32ElementIndex;
         }
+
+        ptLinkedList->i32End = i32ElementIndex;
 
         {
             pvLinkedListElement = ((uint8_t *)ptLinkedList->pvArray) + (i32ElementIndex * ptLinkedList->i32ElementSize);
@@ -455,7 +453,7 @@ bool LinkedList_insertAtEnd(LinkedList_t *ptLinkedList, void *pvElement)
 
 bool LinkedList_insertAfter(LinkedList_t *ptLinkedList, void *pvElement, void *pvAfterThisElem)
 {
-    int32_t i32ElementIndex, i32AfterThisElemIndex;
+    int32_t i32ElementIndex, i32AfterThisElemIndex, i32AfterNextElemIndex;
     void *pvLinkedListElement;
 
     if(!LinkedList_isFull(ptLinkedList))
@@ -467,15 +465,22 @@ bool LinkedList_insertAfter(LinkedList_t *ptLinkedList, void *pvElement, void *p
         }
 
         i32ElementIndex = _getValidIndex(ptLinkedList);
+        i32AfterNextElemIndex = ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex;
 
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].bValid = true;
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32PreviousIndex = i32AfterThisElemIndex;
-        ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32NextIndex = ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex;
-        if(ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex != -1)
-        {
-            ptLinkedList->ptElemHeaderArray[ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex].i32PreviousIndex = i32ElementIndex;
-        }
+        ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32NextIndex = i32AfterNextElemIndex;
         ptLinkedList->ptElemHeaderArray[i32AfterThisElemIndex].i32NextIndex = i32ElementIndex;
+
+        if(i32AfterNextElemIndex != -1)
+        {
+            ptLinkedList->ptElemHeaderArray[i32AfterNextElemIndex].i32PreviousIndex = i32ElementIndex;
+        }
+        else
+        {
+            ptLinkedList->i32End = i32ElementIndex;
+        }
+
         {
             pvLinkedListElement = ((uint8_t *)ptLinkedList->pvArray) + (i32ElementIndex * ptLinkedList->i32ElementSize);
             memcpy(pvLinkedListElement, pvElement, ptLinkedList->i32ElementSize);
@@ -492,7 +497,7 @@ bool LinkedList_insertAfter(LinkedList_t *ptLinkedList, void *pvElement, void *p
 
 bool LinkedList_insertBefore(LinkedList_t *ptLinkedList, void *pvElement, void *pvBeforeThisElem)
 {
-    int32_t i32ElementIndex, i32BeforeThisElemIndex;
+    int32_t i32ElementIndex, i32BeforeThisElemIndex, i32BeforePreviousElemIndex;
     void *pvLinkedListElement;
 
     if(!LinkedList_isFull(ptLinkedList))
@@ -504,17 +509,17 @@ bool LinkedList_insertBefore(LinkedList_t *ptLinkedList, void *pvElement, void *
         }
 
         i32ElementIndex = _getValidIndex(ptLinkedList);
+        i32BeforePreviousElemIndex = ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex;
 
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].bValid = true;
         ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32NextIndex = i32BeforeThisElemIndex;
-        ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32PreviousIndex =  ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex;
-        if(ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex != -1)
-        {
-            ptLinkedList->ptElemHeaderArray[ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex].i32NextIndex = i32ElementIndex;
-        }
+        ptLinkedList->ptElemHeaderArray[i32ElementIndex].i32PreviousIndex =  i32BeforePreviousElemIndex;
         ptLinkedList->ptElemHeaderArray[i32BeforeThisElemIndex].i32PreviousIndex = i32ElementIndex;
-
-        if(ptLinkedList->i32Head == i32BeforeThisElemIndex)
+        if(i32BeforePreviousElemIndex != -1)
+        {
+            ptLinkedList->ptElemHeaderArray[i32BeforePreviousElemIndex].i32NextIndex = i32ElementIndex;
+        }
+        else
         {
             ptLinkedList->i32Head = i32ElementIndex;
         }

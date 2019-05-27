@@ -11,6 +11,7 @@ typedef struct ElementHeader
 typedef struct LinkedList
 {
     int32_t i32Head;
+    int32_t i32End;
     int32_t i32LinkedListLen;
     int32_t i32ActualLen;
     int32_t i32ElementSize;
